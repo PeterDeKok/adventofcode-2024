@@ -1,0 +1,20 @@
+# The author of the challenges should get the credit for the content of these files.
+# The readme files will contain a link for proper attribution.
+/src/days/**/PROBLEM.md
+/src/days/**/input.txt
+/src/days/**/input
+/src/days/**/output/
+
+/src/puzzles/fun.txt
+/src/puzzles/**/PROBLEM.*
+/src/puzzles/**/input.txt
+/src/puzzles/**/input
+/src/puzzles/**/output/
+/src/puzzles/**/stats.json
+
+/src/puzzles/ratelimit.json
+
+/vendor/
+
+/local-only-backups/
+/src/archive/
