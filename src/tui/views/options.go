@@ -109,6 +109,7 @@ func (v *Options) setMainItems() {
 	v.List.Model.SetItems([]bubbles.ListItem{
 		// op.OptionTest.SetDisabled(v.Running),
 		op.OptionLoadFunLines.SetDisabled(v.Running),
+		op.OptionCumulativeRuntime.SetDisabled(v.Running),
 	})
 
 	v.List.Model.SetStatusBarItemName("main option", "main options")

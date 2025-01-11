@@ -77,6 +77,41 @@ var (
 			return manager.LoadRemoteFunLines(ctx)
 		},
 	}
+
+	OptionCumulativeRuntime = &Option{
+		title: "cumulative runtime",
+		description: "Compute and print the cumulative runtime",
+		run: func(ctx context.Context, manager *manage.Manager, _ *puzzle.Part) result.Result {
+			var sum time.Duration
+			r := result.New()
+			defer r.SetDone()
+
+			r.AddRow("", "", "", "part 1", "part 2")
+
+			for _, p := range manager.Puzzles() {
+				p1, p2 := "-", "-"
+
+				if p.Part1 != nil && p.Part1.FastestSolution != nil && p.Part1.FastestSolution.RunResult != nil && p.Part1.FastestSolution.RunResult.Runtime != nil {
+					rt := *p.Part1.FastestSolution.RunResult.Runtime
+					p1 = rt.String()
+					sum += rt
+				}
+
+				if p.Part2 != nil && p.Part2.FastestSolution != nil && p.Part2.FastestSolution.RunResult != nil && p.Part2.FastestSolution.RunResult.Runtime != nil {
+					rt := *p.Part2.FastestSolution.RunResult.Runtime
+					p2 = rt.String()
+					sum += rt
+				}
+
+				r.AddRow(result.EmojiRunning, p.Title(), "", p1, p2)
+			}
+
+			r.AddRow("")
+			r.AddRow(result.EmojiCheckMark, "Total runtime: ", "", sum.String())
+
+			return r
+		},
+	}
 )
 
 // Part options
