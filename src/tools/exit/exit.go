@@ -3,6 +3,7 @@ package exit
 import (
 	"fmt"
 	"os"
+	"runtime/debug"
 )
 
 type errExit struct {
@@ -31,7 +32,7 @@ func PanicToExit() {
 			fmt.Println(r)
 			os.Exit(r.Code)
 		default:
-			fmt.Println("unknown panic: ", r)
+			fmt.Println("unknown panic: ", r, "\n", string(debug.Stack()))
 			os.Exit(255)
 		}
 	}

@@ -8,7 +8,8 @@ import (
 
 type RunResult struct {
 	InputFile  string         `json:"input_file"`
-	Error      error          `json:"error"`
+	Error      error          `json:"-"`
+	ErrorStr   *string        `json:"error"`
 	Answer     string         `json:"-"`
 	Runtime    *time.Duration `json:"runtime"`
 	FinishedAt *Timestamp     `json:"finishedAt"`
@@ -40,6 +41,9 @@ func (rr *RunResult) mergeJson(rrJson *RunResult, r result.Result) result.Result
 	}
 	if rrJson.Error != nil {
 		rr.Error = rrJson.Error
+
+		es := rrJson.Error.Error()
+		rr.ErrorStr = &es
 	}
 	if len(rrJson.Answer) > 0 {
 		rr.Answer = rrJson.Answer
@@ -58,9 +62,17 @@ func (rr *RunResult) mergeJson(rrJson *RunResult, r result.Result) result.Result
 }
 
 func (rr *RunResult) ToSampleRunResult(name string, expected string, err error) *SampleRunResult {
+	var errStr *string
+
+	if err != nil {
+		es := err.Error()
+		errStr = &es
+	}
+
 	return &SampleRunResult{
 		InputFile:  name,
 		Error:      err,
+		ErrorStr:   errStr,
 		Answer:     rr.Answer,
 		Timing:     rr.Runtime,
 		FinishedAt: rr.FinishedAt,
@@ -70,7 +82,8 @@ func (rr *RunResult) ToSampleRunResult(name string, expected string, err error) 
 
 type SampleRunResult struct {
 	InputFile  string         `json:"input_file"`
-	Error      error          `json:"error"`
+	Error      error          `json:"-"`
+	ErrorStr   *string        `json:"error"`
 	Answer     string         `json:"answer"`
 	Timing     *time.Duration `json:"timing"`
 	FinishedAt *Timestamp     `json:"finishedAt"`
@@ -102,6 +115,9 @@ func (rr *SampleRunResult) mergeJson(rrJson *SampleRunResult, r result.Result) r
 	}
 	if rrJson.Error != nil {
 		rr.Error = rrJson.Error
+
+		es := rrJson.Error.Error()
+		rr.ErrorStr = &es
 	}
 	if len(rrJson.Answer) > 0 {
 		rr.Answer = rrJson.Answer

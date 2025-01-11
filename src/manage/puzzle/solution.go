@@ -115,6 +115,12 @@ func (s *Solution) mergeJson(sJson *Solution, r result.Result) result.Result {
 		s.SampleRunResults = make([]*SampleRunResult, 0, 5)
 	} else {
 		s.SampleRunResults = sJson.SampleRunResults
+
+		for _, srr := range s.SampleRunResults {
+			if srr.ErrorStr != nil && srr.Error == nil {
+				srr.Error = errors.New(*srr.ErrorStr)
+			}
+		}
 	}
 	r.AddRow(result.EmojiCheckMark, "solution sample run results updated", "", fmt.Sprintf("[%d x]", len(sJson.SampleRunResults)))
 	r.Increment(1)
@@ -265,7 +271,7 @@ func (s *Solution) RunSamples(ctx context.Context, r result.Result) result.Resul
 			r.AddRow(result.EmojiCheckMark, "sample files read", "", desc)
 		}
 
-		_, rr, err := s.run(ctx, r, sf.In)
+		_, rr, err := s.run(ctx, r, sf)
 
 		if rr == nil {
 			r.AddError(err, "sample run failed to start", desc)
@@ -348,7 +354,7 @@ func (s *Solution) RunInput(ctx context.Context, r result.Result) result.Result 
 
 	r.AddRow(result.EmojiCheckMark, "Running solution against input", "", sf.Name)
 
-	_, rr, err := s.run(ctx, r, sf.In)
+	_, rr, err := s.run(ctx, r, sf)
 
 	if rr == nil {
 		s.Status = SolutionStatusInvalid
@@ -358,6 +364,10 @@ func (s *Solution) RunInput(ctx context.Context, r result.Result) result.Result 
 	rr.InputFile = strings.TrimLeft(strings.TrimPrefix(sf.Name, s.part.Path()), "/")
 	rr.Expected = sf.Expected
 	rr.Error = err
+	if err != nil {
+		es := err.Error()
+		rr.ErrorStr = &es
+	}
 	s.RunResult = rr
 
 	if err != nil {
@@ -379,9 +389,16 @@ func (s *Solution) RunInput(ctx context.Context, r result.Result) result.Result 
 	return r
 }
 
-func (s *Solution) run(ctx context.Context, r result.Result, in io.Reader) (result.Result, *RunResult, error) {
-	r = result.OrNew(r, 5)
+func (s *Solution) run(ctx context.Context, r result.Result, in *SolutionFilepair) (result.Result, *RunResult, error) {
+	r = result.OrNew(r, 7)
 	defer r.Increment(1)
+
+	if in == nil {
+		return r.AddError(fmt.Errorf("missing"), "check input file pair"), nil, r.Error()
+	} else {
+		r.AddRow(result.EmojiCheckMark, "check input file pair")
+		r.Increment(1)
+	}
 
 	cctx, cancel := context.WithCancel(ctx)
 	done := context.AfterFunc(s.cnf.Ctx, cancel)
@@ -404,6 +421,20 @@ func (s *Solution) run(ctx context.Context, r result.Result, in io.Reader) (resu
 		r.Increment(1)
 	}
 
+	if pPtr, err := p.Lookup("Pre"); err != nil {
+		// Not exisiting (or loadable) is OK
+		r.AddRow(result.EmojiEmpty, "pre-solution func from plugin", "", "Pre func symbol not found")
+		r.Increment(1)
+	} else if pre, ok := pPtr.(func(run string)); !ok {
+		// Existing, but not casting is a failure
+		return r.AddError(err, "pre-solution func from plugin"), nil, r.Error()
+	} else {
+		pre(in.Name)
+
+		r.AddRow(result.EmojiCheckMark, "pre-solution func from plugin")
+		r.Increment(1)
+	}
+
 	sPtr, err := p.Lookup("Solution")
 	if err != nil {
 		return r.AddError(err, "lookup solution func from plugin"), nil, r.Error()
@@ -420,7 +451,7 @@ func (s *Solution) run(ctx context.Context, r result.Result, in io.Reader) (resu
 	// Replace this with an 'in-progress' item.
 	r.AddRow(result.EmojiRunning, "running solution")
 
-	runResult, err := solutionWrapper(solution, cctx, s.RunLogger, in)
+	runResult, err := solutionWrapper(solution, cctx, s.RunLogger, in.In)
 	if err != nil {
 		if _, err := fmt.Fprintf(stderrFile, "%s", err); err != nil {
 			s.l.Error("Failed to write to stderr log file")
@@ -494,7 +525,7 @@ func (s *Solution) GetInputfile(r result.Result) (result.Result, *SolutionFilepa
 	efpRel := strings.TrimLeft(strings.TrimPrefix(efp, s.part.Path()), "/")
 
 	sf := &SolutionFilepair{
-		Name: ifp,
+		Name: "input.txt",
 	}
 
 	if inpB, err := os.ReadFile(ifp); err != nil {
@@ -668,9 +699,17 @@ func (s *Solution) UnmarshalJSON(b []byte) error {
 	}
 	if err := json.Unmarshal(v["run_result"], &s.RunResult); err != nil {
 		return err
+	} else if s.RunResult != nil && s.RunResult.ErrorStr != nil {
+		s.RunResult.Error = errors.New(*s.RunResult.ErrorStr)
 	}
 	if err := json.Unmarshal(v["sample_run_results"], &s.SampleRunResults); err != nil {
 		return err
+	} else if s.SampleRunResults != nil {
+		for _, srr := range s.SampleRunResults {
+			if srr.ErrorStr != nil {
+				srr.Error = errors.New(*srr.ErrorStr)
+			}
+		}
 	}
 
 	var status string
