@@ -7,6 +7,9 @@ No problem defitions, personal input or solutions will be archived in this repo.
 ## TLDR
 The puzzle solutions can be found at [/src/puzzles](/src/puzzles)
 
+### Notable events
+- [day 7 part 2 Post-mortem](/src/puzzles/2024-12-07/part2/README.md)
+
 ## Result summary
 
 | day        | stars | part 1       | part 2       |
